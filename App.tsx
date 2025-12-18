@@ -19,7 +19,6 @@ const App: React.FC = () => {
 
   const [shuffledQuestions, setShuffledQuestions] = useState([...QUESTIONS]);
 
-  // Sound effects
   const playSound = (type: 'correct' | 'complete' | 'click') => {
     const urls = {
       correct: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
@@ -27,7 +26,7 @@ const App: React.FC = () => {
       click: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'
     };
     const audio = new Audio(urls[type]);
-    audio.play().catch(() => {}); // Browser policy might block autoplay
+    audio.play().catch(() => {});
   };
 
   const handleLogin = (name: string) => {
@@ -47,46 +46,22 @@ const App: React.FC = () => {
     };
 
     const newQuestions = QUESTIONS.map(q => {
-      // Logic for Multiple Choice: keep A, B, C, D labels but shuffle text
       if (q.type === QuestionType.MULTIPLE_CHOICE && q.options) {
         const originalOptions = q.options;
         const correctText = originalOptions.find(o => o.id === q.correctAnswer)?.text;
         const shuffledTexts = shuffleArray(originalOptions.map(o => o.text));
-        
-        const newOptions = originalOptions.map((o, idx) => ({
-          id: o.id, // Always A, B, C, D
-          text: shuffledTexts[idx]
-        }));
-        
+        const newOptions = originalOptions.map((o, idx) => ({ id: o.id, text: shuffledTexts[idx] }));
         const newCorrectAnswer = newOptions.find(o => o.text === correctText)?.id;
-        
         return { ...q, options: newOptions, correctAnswer: newCorrectAnswer };
       }
-
-      // Logic for Multi Select: keep IDs but shuffle text content
       if (q.type === QuestionType.MULTI_SELECT && q.options) {
         const originalOptions = q.options;
-        // Map correct IDs to their corresponding text
-        const correctTexts = originalOptions
-          .filter(o => q.correctIds?.includes(o.id))
-          .map(o => o.text);
-          
+        const correctTexts = originalOptions.filter(o => q.correctIds?.includes(o.id)).map(o => o.text);
         const shuffledTexts = shuffleArray(originalOptions.map(o => o.text));
-        
-        const newOptions = originalOptions.map((o, idx) => ({
-          id: o.id,
-          text: shuffledTexts[idx]
-        }));
-        
-        // Find the new IDs for the correct texts
-        const newCorrectIds = newOptions
-          .filter(o => correctTexts.includes(o.text))
-          .map(o => o.id);
-
+        const newOptions = originalOptions.map((o, idx) => ({ id: o.id, text: shuffledTexts[idx] }));
+        const newCorrectIds = newOptions.filter(o => correctTexts.includes(o.text)).map(o => o.id);
         return { ...q, options: newOptions, correctIds: newCorrectIds };
       }
-
-      // Logic for Matching: shuffle both lists
       if (q.type === QuestionType.MATCHING && q.matchingOptions) {
         return {
           ...q,
@@ -96,20 +71,18 @@ const App: React.FC = () => {
           }
         };
       }
-      
       return q;
     });
-
-    // Also shuffle the order of the questions themselves
     setShuffledQuestions(shuffleArray(newQuestions));
   }, []);
 
   const handleCorrect = () => {
     playSound('correct');
     confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
+      particleCount: 80,
+      spread: 60,
+      origin: { y: 0.7 },
+      colors: ['#3b82f6', '#10b981', '#fbbf24']
     });
   };
 
@@ -126,32 +99,57 @@ const App: React.FC = () => {
 
     if (finalScore === 10) {
       playSound('complete');
-      const duration = 5 * 1000;
-      const animationEnd = Date.now() + duration;
-      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+      
+      const duration = 8 * 1000;
+      const end = Date.now() + duration;
 
-      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+      const frame = () => {
+        confetti({
+          particleCount: 2,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#ff0000', '#ffd700']
+        });
+        confetti({
+          particleCount: 2,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#ff0000', '#ffd700']
+        });
 
-      const interval: any = setInterval(() => {
-        const timeLeft = animationEnd - Date.now();
-        if (timeLeft <= 0) return clearInterval(interval);
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
 
-        const particleCount = 50 * (timeLeft / duration);
-        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
-        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
-      }, 250);
+      // Massive explosive bursts
+      const explosion = (x: number, y: number) => {
+        confetti({
+          particleCount: 150,
+          spread: 120,
+          origin: { x, y },
+          scalar: 1.2,
+          shapes: ['star'],
+          colors: ['#FFD700', '#FFA500', '#FF4500', '#FFFFFF']
+        });
+      };
+
+      setTimeout(() => explosion(0.5, 0.5), 0);
+      setTimeout(() => explosion(0.2, 0.4), 1000);
+      setTimeout(() => explosion(0.8, 0.4), 2000);
+      setTimeout(() => explosion(0.5, 0.3), 3500);
+      setTimeout(() => explosion(0.3, 0.6), 5000);
+      setTimeout(() => explosion(0.7, 0.6), 6000);
     }
   };
 
   const restart = () => {
     playSound('click');
     shuffleAll();
-    setState(prev => ({
-      ...prev,
-      currentStep: 'quiz',
-      userAnswers: [],
-      score: 0
-    }));
+    setState(prev => ({ ...prev, currentStep: 'quiz', userAnswers: [], score: 0 }));
   };
 
   return (
@@ -182,8 +180,6 @@ const App: React.FC = () => {
           />
         )}
       </div>
-      
-      {/* Decorative footer */}
       <div className="mt-8 text-blue-500 font-bold flex items-center gap-2">
         <span>🚀 Học mà chơi, chơi mà học! 🌟</span>
       </div>
